@@ -1,4 +1,6 @@
+import sys
 import caffe
+import numpy as np
 
 # Global variables
 net = None
@@ -24,6 +26,11 @@ def get_feature_map(im, layer='conv5'):
 
 
 def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
+    # Pre-process images
+    print 'Pre-processing images...'
+    sys.stdout.flush()
+    preprocessed_images = np.asarray(preprocess_images(im_list))
+
     num_images = len(im_list)
     end_pointer = -1
     end = False
@@ -38,12 +45,22 @@ def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
             end_pointer = num_images - 1
             end = True
         # Get batch of images and reshape net
-        batch = im_list[start_pointer:end_pointer]
+        print 'Start pointer: ', start_pointer
+        print 'End pointer: ', end_pointer
+        print 'Total images: ', num_images
+        sys.stdout.flush()
+        batch = preprocessed_images[start_pointer:end_pointer]
         if net.blobs['data'].shape[0] != len(batch):
             change_batch_size(len(batch))
+        print 'Successfully changed batch size'
+        sys.stdout.flush()
         # Forward pass
-        out = net.forward_all(data=np.asarray([transformer.preprocess('data', batch)]))
+        out = net.forward_all(data=batch)
+        print 'Forward pass done'
+        sys.stdout.flush()
         # Store all feature maps in a list
+        print out.keys()
+        sys.stdout.flush()
         for feat_map in out[layer]:
             features.append(feat_map)
 
@@ -53,5 +70,13 @@ def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
 def change_batch_size(batch_size):
     data_shape = net.blobs['data'].shape
     net.blobs['data'].reshape(batch_size, data_shape[1], data_shape[2], data_shape[3])
-    net.blobs['label'].reshape(batch_size, )
+    net.blobs['prob'].reshape(batch_size, )
     net.reshape()  # optional -- the net will reshape automatically before a call to forward()
+
+
+def preprocess_images(im_list):
+    num_images = len(im_list)
+    ret_list = [None] * num_images
+    for i in range(0, num_images):
+        ret_list[i] = transformer.preprocess('data', im_list[i])
+    return ret_list

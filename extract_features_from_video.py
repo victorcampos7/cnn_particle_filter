@@ -43,6 +43,8 @@ num_images = len(filenames)
 images = [None] * num_images
 for i in range(0, num_images):
     images[i] = (img_helper.resize_image(img_helper.load_image(filenames[i]), img_size, mean_values=mean_values))
+print 'Loaded %d images' % len(images)
+sys.stdout.flush()
 
 
 # Load CNN
@@ -54,19 +56,22 @@ caffe_helper.load_cnn(deploy_path, caffemodel_path, mean_file_path=mean_file_pat
 # Extract features
 print 'Extracting features...'
 sys.stdout.flush()
-feature_maps = caffe_helper.get_feature_map_batch(images)
+feature_maps = caffe_helper.get_feature_map_batch(images, layer='conv5', batch_size=256)
 
 
 # Save feature maps in disk
 save_dir = video_path + 'features/'
 print 'Saving features to disk...'
+print 'Images: %d' % num_images
+print 'Feature maps: %d' % len(feature_maps)
 sys.stdout.flush()
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
     print 'Created ', save_dir
     sys.stdout.flush()
 for i in range(0, num_images):
-    save_file = save_dir + filenames[i].split('.')[0] + '.npy'
+    filename = filenames[i].split('/')[-1].split('.')[0]
+    save_file = save_dir + filename + '.npy'
     np.save(save_file, feature_maps[i])
 
 print 'Done!'

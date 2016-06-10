@@ -21,7 +21,7 @@ def load_cnn(deploy_path, caffemodel_path, mean_file_path='ilsvrc_2012_mean.npy'
 
 def get_feature_map(im, layer='conv5'):
     # Make a forward pass
-    out = net.forward_all(data=np.asarray([transformer.preprocess('data', im)]))
+    out = net.forward_all(data=np.asarray([transformer.preprocess('data', im)]), blobs=[layer])
     return out[layer]
 
 
@@ -32,17 +32,17 @@ def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
     preprocessed_images = np.asarray(preprocess_images(im_list))
 
     num_images = len(im_list)
-    end_pointer = -1
+    end_pointer = 0
     end = False
     features = list()
     # Loop through all the images
     while not end:
         # Update pointers
-        start_pointer = end_pointer + 1
+        start_pointer = end_pointer
         end_pointer = start_pointer + batch_size
         # Check if we are out of range
         if end_pointer >= num_images:
-            end_pointer = num_images - 1
+            end_pointer = num_images
             end = True
         # Get batch of images and reshape net
         print 'Start pointer: ', start_pointer
@@ -52,15 +52,13 @@ def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
         batch = preprocessed_images[start_pointer:end_pointer]
         if net.blobs['data'].shape[0] != len(batch):
             change_batch_size(len(batch))
-        print 'Successfully changed batch size'
-        sys.stdout.flush()
+            print 'Successfully changed batch size to %d' % len(batch)
+            sys.stdout.flush()
         # Forward pass
-        out = net.forward_all(data=batch)
+        out = net.forward_all(data=batch, blobs=[layer])
         print 'Forward pass done'
         sys.stdout.flush()
         # Store all feature maps in a list
-        print out.keys()
-        sys.stdout.flush()
         for feat_map in out[layer]:
             features.append(feat_map)
 

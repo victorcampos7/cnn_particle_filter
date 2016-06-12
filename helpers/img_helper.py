@@ -59,5 +59,8 @@ def resize_image(im, resize_size, mean_values=None):
     return res
 
 
-def draw_bounding_box(img, x, y, w, h):
-    pass
+def draw_bounding_box(video_path, filename, save_dir, bounding_box):
+    img = cv2.imread(video_path+filename)
+    x, y, w, h = bounding_box
+    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    cv2.imsave(save_dir + filename)

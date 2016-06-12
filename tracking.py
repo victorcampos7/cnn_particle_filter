@@ -29,13 +29,15 @@ if not os.path.exists(feat_dir):
 # List images in the given path
 print 'Listing images...'
 sys.stdout.flush()
-filenames = list()
+non_sorted_filenames = list()
 img_extensions = ["png", "bmp", "jpg", "jpeg"]
 for f in os.listdir(video_path):
     file_extension = f.split('.')[-1]
     if file_extension.lower() in img_extensions:
-        filenames.append(f)
-print "Listed %d images" % len(filenames)
+        non_sorted_filenames.append(f)
+print "Listed %d images" % len(non_sorted_filenames)
+
+filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
 
 
 # Open ground truth file

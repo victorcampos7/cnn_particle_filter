@@ -22,13 +22,33 @@ if not os.path.isfile(predictions_file_path):
 # List images in the given path
 print 'Listing images...'
 sys.stdout.flush()
-filenames = list()
+non_sorted_filenames = list()
 img_extensions = ["png", "bmp", "jpg", "jpeg"]
 for f in os.listdir(video_path):
     file_extension = f.split('.')[-1]
     if file_extension.lower() in img_extensions:
-        filenames.append(f)
-print "Listed %d images" % len(filenames)
+        non_sorted_filenames.append(f)
+print "Listed %d images" % len(non_sorted_filenames)
+
+filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
+print filenames
+
+# Open ground truth file
+try:
+    gt_file = open(video_path+'gt.txt', 'r')
+except:
+    sys.exit("Error: could not open ground truth file in %s" % video_path+'gt.txt')
+
+# Get bounding boxes from the ground truth
+gt_bounding_boxes = list()
+while True:
+    line = gt_file.readline()
+    if len(line) == 0:
+        break
+    values = line.split(',')
+    # Parse coordinates (x,y,w,h) as integers
+    x0, y0, x1, y1 = int(values[0]), int(values[1]), int(values[2]), int(values[3])
+    gt_bounding_boxes.append((x0, y0, x1 - x0, y1 - y0))
 
 
 # Get bounding boxes from the predictions
@@ -60,4 +80,5 @@ for i, filename in enumerate(filenames):
     img_helper.draw_bounding_box(video_path=video_path,
                                  filename=filename,
                                  save_dir=save_dir,
-                                 bounding_box=bounding_boxes[i])
+                                 pred_bounding_box=bounding_boxes[i],
+                                 gt_bounding_box=gt_bounding_boxes[i])

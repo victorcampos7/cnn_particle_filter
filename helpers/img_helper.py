@@ -1,8 +1,8 @@
 import skimage.transform
 import skimage.color
 import skimage.data
-
 import numpy as np
+import cv2
 
 
 def load_image(filename):

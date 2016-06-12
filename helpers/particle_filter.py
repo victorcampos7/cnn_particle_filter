@@ -3,9 +3,10 @@ import random
 import numpy as np
 from math import sqrt
 import cv2
+import copy
 
 
-def generate_gaussian_noise(mu=0, sigma=1):
+def generate_gaussian_noise(mu=0, sigma=1.):
     return numpy.random.normal(mu, sigma)
 
 
@@ -21,13 +22,16 @@ def compute_features(current_features, x, y, w, h, combination_method='avg'):
 
 def resize_feature_map(feature_map, size_x, size_y):
     c = np.shape(feature_map)[0]
-    new_size = (c, size_y, size_x)
-    return cv2.resize(feature_map, new_size, interpolation=cv2.INTER_NEAREST)
+    new_size = (size_x, size_y)
+    resized_feature_map = np.zeros((c, size_y, size_x))
+    for i in range(0, c):
+        resized_feature_map[i, :, :] = cv2.resize(feature_map[i, :, :], new_size, interpolation=cv2.INTER_NEAREST)
+    return resized_feature_map
 
 
 class Particle:
 
-    def __init__(self, x, y, w, h, sigma, img_dims, noise_distr='gaussian', combination_method='avg'):
+    def __init__(self, x, y, w, h, sigma, img_dims, noise_distr='uniform', combination_method='avg'):
         self.x = x
         self.y = y
         self.w = w
@@ -39,7 +43,7 @@ class Particle:
         self.noise_distr = noise_distr
         self.combination_method = combination_method
 
-    def generate_noise(self, mu=0, sigma=1):
+    def generate_noise(self, mu=0, sigma=1.):
         if self.noise_distr == 'gaussian':
             return generate_gaussian_noise(mu, sigma)
         elif self.noise_distr == 'uniform':
@@ -48,13 +52,17 @@ class Particle:
             raise ValueError('Invalid noise distribution')
 
     def propagate(self):
-        self.x += int(max(min(self.generate_noise(sigma=self.sigma), self.max_x), 0))
-        self.y += int(max(min(self.generate_noise(sigma=self.sigma), self.max_y), 0))
-        self.w += int(max(min(self.generate_noise(sigma=sqrt(2)*self.sigma), self.max_x-self.x), 0))
-        self.h += int(max(min(self.generate_noise(sigma=sqrt(2)*self.sigma), self.max_y-self.y), 0))
+        self.x += int(self.generate_noise(sigma=self.sigma))
+        self.y += int(self.generate_noise(sigma=self.sigma))
+        self.w += int(self.generate_noise(sigma=sqrt(2)*self.sigma))
+        self.h += int(self.generate_noise(sigma=sqrt(2)*self.sigma))
+        self.x = max(min(self.x, self.max_x-1), 0)
+        self.y = max(min(self.y, self.max_y-1), 0)
+        self.w = max(min(self.w, self.max_x-self.x), 1)
+        self.h = max(min(self.h, self.max_y-self.y), 1)
 
-    def compute_features(self, current_features):
-        return compute_features(current_features, self.x, self.y, self.w, self.h, self.combination_method)
+    def compute_features(self, resized_features):
+        return compute_features(resized_features, self.x, self.y, self.w, self.h, self.combination_method)
 
     def compute_weight(self, current_features, model):
         particle_features = self.compute_features(current_features)
@@ -78,8 +86,9 @@ class ParticleFilter:
         self.weights = (1./self.num_particles)*np.ones(self.num_particles, dtype=np.float32)
         self.img_dims = img_dims
 
-    def set_model(self, model):
-        self.model = resize_feature_map(model, self.img_dims[1], self.img_dims[0])
+    def set_model(self, model, x, y, w, h, combination_method='avg'):
+        resized_model = resize_feature_map(model, self.img_dims[1], self.img_dims[0])
+        self.model = compute_features(resized_model, x, y, w, h, combination_method)
 
     def set_current_features(self, current_features):
         self.current_features = resize_feature_map(current_features, self.img_dims[1], self.img_dims[0])
@@ -100,12 +109,13 @@ class ParticleFilter:
         cdf = [0.] + [sum(self.weights[:i+1]) for i in range(self.num_particles)]
         # Sample using random values and finding where they belong in the CDF
         u0, j = numpy.random.random(), 0
-        for u in [(u0 + i) / n for i in range(n)]:
+        for u in [(u0 + i) / self.num_particles for i in range(self.num_particles)]:
             while u > cdf[j]:
                 j += 1
             new_indices.append(j - 1)
         # Re-sample particles
-        self.particles = self.particles[new_indices]
+        old_particles = list(self.particles)
+        self.particles = [copy.deepcopy(old_particles[i]) for i in new_indices]
         # Re-sample weights (optional, since they will be recomputed again in the next iteration)
         self.weights = (1. / self.num_particles) * np.ones(self.num_particles, dtype=np.float32)
 

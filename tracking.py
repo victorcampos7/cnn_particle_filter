@@ -17,6 +17,10 @@ if not video_path.endswith('/'):
 feat_dir = video_path + 'features/'
 
 
+# List to store the predicted bounding boxes
+predictions = list()
+
+
 # Check that the features have been extracted
 if not os.path.exists(feat_dir):
     sys.exit('Error: feature maps not found')
@@ -53,23 +57,40 @@ while True:
     gt_bounding_boxes.append((x0, y0, x1-x0, y1-y0))
 
 
-# Create particle filter
+# Reference for the tracker
 initial_bb = gt_bounding_boxes[0]
 x0, y0, w0, h0 = initial_bb[0], initial_bb[1], initial_bb[2], initial_bb[3]
+predictions.append('%d,%d,%d,%d' % (x0, y0, w0, h0))
+
+# Create particle filter
 img_dims = np.shape(img_helper.load_image(video_path+filenames[0]))
 initial_feature_map = np.load(feat_dir + filenames[0].split('.')[0] + '.npy')
 tracker = particle_filter.ParticleFilter(num_particles, x0, y0, w0, h0, 10, img_dims)
-tracker.set_model(particle_filter.compute_features(initial_feature_map, x0, y0, w0, h0))
+tracker.set_model(initial_feature_map, x0, y0, w0, h0)
 
 
 # Track
 num_frames = len(gt_bounding_boxes)
+print '\n\n------------------ Frame %d/%d ------------------' % (1, num_frames)
+print 'Ground truth: %d, %d, %d, %d' % (x0, y0, w0, h0)
+print 'Prediction: %d, %d, %d, %d' % (x0, y0, w0, h0)
 for i in range(1, num_frames):
+    print '\n\n------------------ Frame %d/%d ------------------' % (i + 1, num_frames)
     current_feature_map = np.load(feat_dir + filenames[i].split('.')[0] + '.npy')
     x, y, w, h = tracker.track(current_feature_map)
+    predictions.append('%d,%d,%d,%d' % (x, y, w, h))
     gt_bb = gt_bounding_boxes[i]
     x_gt, y_gt, w_gt, h_gt = gt_bb[0], gt_bb[1], gt_bb[2], gt_bb[3]
-    print '\n\n------------------ Frame %d ------------------' % i+1
     print 'Ground truth: %d, %d, %d, %d' % (x_gt, y_gt, w_gt, h_gt)
     print 'Prediction: %d, %d, %d, %d' % (x, y, w, h)
     sys.stdout.flush()
+
+
+# Write predictions to a file
+save_file = video_path+'predictions.txt'
+print 'Saving predictions to %s' % save_file
+sys.stdout.flush()
+output_file = open(save_file, 'w')
+for bb in predictions:
+    output_file.write(bb+'\n')
+output_file.close()

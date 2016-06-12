@@ -26,13 +26,13 @@ def resize_image(im, resize_size, mean_values=None):
     Resizes image and pads with the mean image if necessary (generates square image!)
     '''
     if mean_values is None:
-        mean_img = 128*np.ones((resize_size, resize_size, 3))
+        mean_img = (128./255) * np.ones((resize_size, resize_size, 3))
     else:
-        mean_img = 128 * np.ones((resize_size, resize_size, 3))
+        mean_img = np.ones((resize_size, resize_size, 3))
         # Caffe works with BGR: (0,1,2) <-> (2,1,0)
-        mean_img[:, :, 0] = mean_values[2] * mean_img[:, :, 0]
-        mean_img[:, :, 1] = mean_values[1] * mean_img[:, :, 0]
-        mean_img[:, :, 2] = mean_values[0] * mean_img[:, :, 0]
+        mean_img[:, :, 0] = (mean_values[2] / 255.) * mean_img[:, :, 0]
+        mean_img[:, :, 1] = (mean_values[1] / 255.) * mean_img[:, :, 0]
+        mean_img[:, :, 2] = (mean_values[0] / 255.) * mean_img[:, :, 0]
     # Find the largest side
     original_height, original_width = np.shape(im)[0], np.shape(im)[1]
     if original_height > original_width:
@@ -57,3 +57,7 @@ def resize_image(im, resize_size, mean_values=None):
     res[y0:y1, x0:x1, :] = resized_image
 
     return res
+
+
+def draw_bounding_box(img, x, y, w, h):
+    pass

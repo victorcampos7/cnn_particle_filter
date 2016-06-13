@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 from helpers import img_helper
+import re
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Track object using pre-computed feature maps')
@@ -30,8 +31,19 @@ for f in os.listdir(video_path):
         non_sorted_filenames.append(f)
 print "Listed %d images" % len(non_sorted_filenames)
 
-filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
-print filenames
+
+digits = re.compile(r'(\d+)')
+
+
+def tokenize(filename):
+    return tuple(int(token) if match else token
+                 for token, match in
+                 ((fragment, digits.search(fragment))
+                  for fragment in digits.split(filename)))
+
+
+filenames = sorted(non_sorted_filenames, key=tokenize)
+#filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
 
 # Open ground truth file
 try:
@@ -47,7 +59,7 @@ while True:
         break
     values = line.split(',')
     # Parse coordinates (x,y,w,h) as integers
-    x0, y0, x1, y1 = int(values[0]), int(values[1]), int(values[2]), int(values[3])
+    x0, y0, x1, y1 = int(float(values[0])), int(float(values[1])), int(float(values[2])), int(float(values[3]))
     gt_bounding_boxes.append((x0, y0, x1 - x0, y1 - y0))
 
 

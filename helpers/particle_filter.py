@@ -31,7 +31,7 @@ def resize_feature_map(feature_map, size_x, size_y):
 
 class Particle:
 
-    def __init__(self, x, y, w, h, sigma, img_dims, noise_distr='uniform', combination_method='avg'):
+    def __init__(self, x, y, w, h, sigma, img_dims, noise_distr='gaussian', combination_method='avg'):
         self.x = x
         self.y = y
         self.w = w
@@ -138,7 +138,7 @@ class ParticleFilter:
         h = int(np.sum(self.weights.T * h_values, axis=0))
         return x, y, w, h
 
-    def track(self, current_features):
+    def track(self, current_features, estimation='max'):
         # Set features for this frame
         self.set_current_features(current_features)
         # Propagate particles
@@ -146,7 +146,12 @@ class ParticleFilter:
         # Compute the weights for the new bounding boxes
         self.compute_weights()
         # Compute estimated bounding box for this frame
-        x, y, w, h = self.compute_bounding_box()
+        if estimation == 'max':
+            x, y, w, h = self.particles[np.argmax(self.weights)].get_values()
+        elif estimation == 'expectation':
+            x, y, w, h = self.compute_bounding_box()
+        else:
+            raise ValueError('Invalid estimation method')
         # Re-sample particles
         self.resample_particles()
         # Return estimated bounding box

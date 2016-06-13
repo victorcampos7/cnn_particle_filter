@@ -51,9 +51,9 @@ def resize_image(im, resize_size, mean_values=None):
     res = np.copy(mean_img)
     center = int(resize_size/2)
     y0 = center-int(new_height/2)
-    y1 = center+int(new_height/2) + 1
+    y1 = y0+new_height
     x0 = center-int(new_width/2)
-    x1 = center+int(new_width/2) + 1
+    x1 = x0 + new_width
     res[y0:y1, x0:x1, :] = resized_image
 
     return res

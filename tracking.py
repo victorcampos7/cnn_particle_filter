@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import argparse
 from helpers import img_helper, particle_filter
+import re
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Track object using pre-computed feature maps')
@@ -37,7 +38,19 @@ for f in os.listdir(video_path):
         non_sorted_filenames.append(f)
 print "Listed %d images" % len(non_sorted_filenames)
 
-filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
+
+digits = re.compile(r'(\d+)')
+
+
+def tokenize(filename):
+    return tuple(int(token) if match else token
+                 for token, match in
+                 ((fragment, digits.search(fragment))
+                  for fragment in digits.split(filename)))
+
+
+filenames = sorted(non_sorted_filenames, key=tokenize)
+#filenames = sorted(non_sorted_filenames, key=lambda n: int(n.split('.')[0]))
 
 
 # Open ground truth file
@@ -55,7 +68,7 @@ while True:
         break
     values = line.split(',')
     # Parse coordinates (x,y,w,h) as integers
-    x0, y0, x1, y1 = int(values[0]), int(values[1]), int(values[2]), int(values[3])
+    x0, y0, x1, y1 = int(float(values[0])), int(float(values[1])), int(float(values[2])), int(float(values[3]))
     gt_bounding_boxes.append((x0, y0, x1-x0, y1-y0))
 
 
@@ -67,7 +80,7 @@ predictions.append('%d,%d,%d,%d' % (x0, y0, w0, h0))
 # Create particle filter
 img_dims = np.shape(img_helper.load_image(video_path+filenames[0]))
 initial_feature_map = np.load(feat_dir + filenames[0].split('.')[0] + '.npy')
-tracker = particle_filter.ParticleFilter(num_particles, x0, y0, w0, h0, 10, img_dims)
+tracker = particle_filter.ParticleFilter(num_particles, x0, y0, w0, h0, 20, img_dims)
 tracker.set_model(initial_feature_map, x0, y0, w0, h0)
 
 
@@ -75,11 +88,11 @@ tracker.set_model(initial_feature_map, x0, y0, w0, h0)
 num_frames = len(gt_bounding_boxes)
 print '\n\n------------------ Frame %d/%d ------------------' % (1, num_frames)
 print 'Ground truth: %d, %d, %d, %d' % (x0, y0, w0, h0)
-print 'Prediction: %d, %d, %d, %d' % (x0, y0, w0, h0)
+print 'Prediction:   %d, %d, %d, %d' % (x0, y0, w0, h0)
 for i in range(1, num_frames):
     print '\n\n------------------ Frame %d/%d ------------------' % (i + 1, num_frames)
     current_feature_map = np.load(feat_dir + filenames[i].split('.')[0] + '.npy')
-    x, y, w, h = tracker.track(current_feature_map)
+    x, y, w, h = tracker.track(current_feature_map, estimation='max')
     predictions.append('%d,%d,%d,%d' % (x, y, w, h))
     gt_bb = gt_bounding_boxes[i]
     x_gt, y_gt, w_gt, h_gt = gt_bb[0], gt_bb[1], gt_bb[2], gt_bb[3]

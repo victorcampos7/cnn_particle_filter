@@ -30,7 +30,6 @@ def get_feature_map_batch(im_list, layer='conv5', batch_size=64):
     print 'Pre-processing images...'
     sys.stdout.flush()
     preprocessed_images = np.asarray(preprocess_images(im_list))
-    np.save('/imatge/vcampos/work/pr_im.npy', preprocessed_images[0])
 
     num_images = len(im_list)
     end_pointer = 0
